@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角洲行动战绩追踪器</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <!-- 统一的 Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#00ff88',
+                        secondary: '#00cc6a',
+                        dark: '#0a192f',
+                        'dark-light': '#172a46',
+                        'dark-lighter': '#2d3748',
+                        danger: '#ff4d4f',
+                        warning: '#ffa940',
+                        success: '#52c41a'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'neon': '0 0 5px theme("colors.primary"), 0 0 20px theme("colors.primary")',
+                        'neon-sm': '0 0 2px theme("colors.primary"), 0 0 5px theme("colors.primary")',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow-neon {
+                text-shadow: 0 0 5px theme('colors.primary');
+            }
+            .bg-gradient-dark {
+                background: linear-gradient(135deg, theme('colors.dark') 0%, theme('colors.dark-light') 100%);
+            }
+            .border-glow {
+                box-shadow: 0 0 5px theme('colors.primary'), inset 0 0 5px theme('colors.primary');
+            }
+            .scrollbar-thin {
+                scrollbar-width: thin;
+            }
+            .scrollbar-thin::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-track {
+                background: theme('colors.dark-lighter');
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+                background: theme('colors.primary');
+                border-radius: 3px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-dark text-gray-200 min-h-screen flex flex-col">
+    <!-- 背景图层 -->
+    <div class="fixed inset-0 z-0 opacity-20 pointer-events-none">
+        <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/6195785eec4a47c29ddef0bbde9d3ef0~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=202605291512533C50E8AA5F3F309EB270&rrcfp=f06b921b&x-expires=1782630830&x-signature=8mtB3mz9cTiJvvfCORwO0kChyjw%3D" 
+             alt="背景" class="w-full h-full object-cover">
+    </div>
+
+    <!-- 顶部导航栏 -->
+    <header class="relative z-10 bg-dark bg-opacity-80 backdrop-blur-sm border-b border-primary border-opacity-30">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center">
+                <h1 class="text-xl font-bold text-primary text-shadow-neon">三角洲行动战绩追踪器</h1>
+            </div>
+            <div class="hidden md:flex items-center space-x-6">
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-dark-light transition-colors">
+                    <i class="fa fa-moon-o text-primary"></i>
+                </button>
+                <button id="export-data" class="p-2 rounded-full hover:bg-dark-light transition-colors">
+                    <i class="fa fa-download text-primary"></i>
+                </button>
+                <button id="import-data" class="p-2 rounded-full hover:bg-dark-light transition-colors">
+                    <i class="fa fa-upload text-primary"></i>
+                </button>
+                <input type="file" id="file-input" class="hidden" accept=".json">
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow relative z-10 container mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
+        <!-- 左侧导航 -->
+        <aside class="w-full md:w-64 bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-4">
+            <nav>
+                <ul class="space-y-2">
+                    <li>
+                        <button id="nav-dashboard" class="w-full flex items-center space-x-3 p-3 rounded-lg bg-primary bg-opacity-20 text-primary">
+                            <i class="fa fa-tachometer fa-fw"></i>
+                            <span>仪表盘</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button id="nav-record" class="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-dark-lighter transition-colors">
+                            <i class="fa fa-plus-circle fa-fw"></i>
+                            <span>记录战局</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button id="nav-history" class="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-dark-lighter transition-colors">
+                            <i class="fa fa-history fa-fw"></i>
+                            <span>历史记录</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button id="nav-analysis" class="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-dark-lighter transition-colors">
+                            <i class="fa fa-line-chart fa-fw"></i>
+                            <span>数据分析</span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="mt-8 border-t border-primary border-opacity-30 pt-4">
+                <h3 class="text-sm uppercase text-gray-400 mb-3">统计概览</h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-sm">
+                            <span>总战局数</span>
+                            <span id="total-matches" class="font-semibold text-primary">0</span>
+                        </div>
+                        <div class="w-full bg-dark-lighter rounded-full h-1.5 mt-1">
+                            <div class="bg-primary h-1.5 rounded-full" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm">
+                            <span>成功率</span>
+                            <span id="success-rate" class="font-semibold text-primary">0%</span>
+                        </div>
+                        <div class="w-full bg-dark-lighter rounded-full h-1.5 mt-1">
+                            <div id="success-rate-bar" class="bg-success h-1.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm">
+                            <span>赚损比</span>
+                            <span id="avg-profit" class="font-semibold text-primary">0</span>
+                        </div>
+                        <div class="w-full bg-dark-lighter rounded-full h-1.5 mt-1">
+                            <div id="avg-profit-bar" class="bg-warning h-1.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右侧内容区 -->
+        <section class="flex-grow">
+            <!-- 仪表盘页面 -->
+            <div id="dashboard-page" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-4">
+                        <h3 class="text-gray-400 text-sm uppercase mb-2">总战局数</h3>
+                        <div class="flex items-end">
+                            <span id="stat-total-matches" class="text-3xl font-bold text-primary">0</span>
+                            <span class="ml-2 text-sm text-gray-400">次</span>
+                        </div>
+                    </div>
+                    <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-4">
+                        <h3 class="text-gray-400 text-sm uppercase mb-2">成功撤离率</h3>
+                        <div class="flex items-end">
+                            <span id="stat-success-rate" class="text-3xl font-bold text-success">0%</span>
+                        </div>
+                    </div>
+                    <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-4">
+                        <h3 class="text-gray-400 text-sm uppercase mb-2">赚损比</h3>
+                        <div class="flex items-end">
+                            <span id="stat-avg-profit" class="text-3xl font-bold text-warning">0</span>
+                        </div>
+                    </div>
+                    <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-4">
+                        <h3 class="text-gray-400 text-sm uppercase mb-2">总游戏时间</h3>
+                        <div class="flex items-end">
+                            <span id="stat-total-time" class="text-3xl font-bold text-primary">0</span>
+                            <span class="ml-2 text-sm text-gray-400">小时</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">收益趋势</h3>
+                            <div class="flex space-x-2">
+                                <button class="time-filter px-2 py-1 text-xs rounded border border-primary border-opacity-30 hover:bg-dark-lighter transition-colors" data-filter="day">当天</button>
+                                <button class="time-filter px-2 py-1 text-xs rounded border border-primary border-opacity-30 hover:bg-dark-lighter transition-colors active" data-filter="week">本周</button>
+                                <button class="time-filter px-2 py-1 text-xs rounded border border-primary border-opacity-30 hover:bg-dark-lighter transition-colors" data-filter="month">本月</button>
+                            </div>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="profit-trend-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-4">
+                        <h3 class="text-lg font-semibold mb-4">撤离情况分布</h3>
+                        <div class="h-64">
+                            <canvas id="evacuation-distribution-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold">最近战局</h3>
+                        <button id="view-all-history" class="text-sm text-primary hover:underline">查看全部</button>
+                    </div>
+                    <div class="overflow-x-auto scrollbar-thin">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-primary border-opacity-30">
+                                    <th class="py-3 px-4 text-center">日期</th>
+                                    <th class="py-3 px-4 text-center">地图</th>
+                                    <th class="py-3 px-4 text-center">难度</th>
+                                    <th class="py-3 px-4 text-center">生存时长（分钟）</th>
+                                    <th class="py-3 px-4 text-center">战备价值</th>
+                                    <th class="py-3 px-4 text-center">行动收益</th>
+                                    <th class="py-3 px-4 text-center">净收益</th>
+                                    <th class="py-3 px-4 text-center">结果</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-matches">
+                                <tr>
+                                    <td colspan="6" class="py-8 text-center text-gray-400">暂无战局记录</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 记录战局页面 -->
+            <div id="record-page" class="hidden">
+                <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-6">
+                    <h2 class="text-xl font-bold mb-6 text-primary">记录新战局</h2>
+                    <form id="match-form" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="entry-value" class="block text-sm font-medium mb-2">战备价值</label>
+                                <input type="number" id="entry-value" name="entryValue" min="0" required
+                                       class="w-full bg-dark border border-primary border-opacity-30 rounded-lg px-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors">
+                            </div>
+                            <div>
+                                <label for="exit-value" class="block text-sm font-medium mb-2">行动收益</label>
+                                <input type="number" id="exit-value" name="exitValue" min="0" required
+                                       class="w-full bg-dark border border-primary border-opacity-30 rounded-lg px-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors">
+                            </div>
+                            <div>
+                                <label for="entry-time" class="block text-sm font-medium mb-2">进入战局时间</label>
+                                <input type="datetime-local" id="entry-time" name="entryTime" required
+                                       class="w-full bg-dark border border-primary border-opacity-30 rounded-lg px-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors">
+                            </div>
+                            <div>
+                                <label for="duration" class="block text-sm font-medium mb-2">生存时长（分钟）</label>
+                                <input type="number" id="duration" name="duration" min="1" max="240" step="0.1" required
+                                       class="w-full bg-dark border border-primary border-opacity-30 rounded-lg px-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors">
+                            </div>
+                            <div>
+                                <label for="map" class="block text-sm font-medium mb-2">地图</label>
+                                <select id="map" name="map" required
+                                        class="w-full bg-dark border border-primary border-opacity-30 rounded-lg px-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors">
+                                    <option value="">请选择地图</option>
+                                    <option value="零号大坝">零号大坝</option>
+                                    <option value="长弓溪谷">长弓溪谷</option>
+                                    <option value="巴克什">巴克什</option>
+                                    <option value="潮汐监狱">潮汐监狱</option>
+                                    <option value="航天基地">航天基地</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="difficulty" class="block text-sm font-medium mb-2">难度</label>
+                                <select id="difficulty" name="difficulty" required
+                                        class="w-full bg-dark border border-primary border-opacity-30 rounded-lg px-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors">
+                                    <option value="">请选择难度</option>
+                                    <option value="regular">常规</option>
+                                    <option value="confidential">机密</option>
+                                    <option value="topsecret">绝密</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="result" class="block text-sm font-medium mb-2">撤离结果</label>
+                                <select id="result" name="result" required
+                                        class="w-full bg-dark border border-primary border-opacity-30 rounded-lg px-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors">
+                                    <option value="">请选择结果</option>
+                                    <option value="success">撤离成功</option>
+                                    <option value="failed">撤离失败</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="notes" class="block text-sm font-medium mb-2">备注</label>
+                            <textarea id="notes" name="notes" rows="3"
+                                      class="w-full bg-dark border border-primary border-opacity-30 rounded-lg px-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors"></textarea>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="bg-primary hover:bg-secondary text-dark font-bold py-2 px-6 rounded-lg transition-colors flex items-center">
+                                <i class="fa fa-save mr-2"></i> 保存记录
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 历史记录页面 -->
+            <div id="history-page" class="hidden">
+                <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <h2 class="text-xl font-bold text-primary">历史战局记录</h2>
+                        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                            <div class="relative">
+                                <input type="text" id="search-input" placeholder="搜索记录..."
+                                       class="w-[240px] bg-dark border border-primary border-opacity-30 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors">
+                                <i class="fa fa-search absolute left-3 top-3 text-gray-400"></i>
+                            </div>
+                            <select id="filter-result"
+                                    class="w-full bg-dark border border-primary border-opacity-30 rounded-lg px-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors">
+                                <option value="">全部结果</option>
+                                <option value="撤离成功">撤离成功</option>
+                                <option value="撤离失败">撤离失败</option>
+                            </select>
+                            <select id="filter-map"
+                                    class="w-full bg-dark border border-primary border-opacity-30 rounded-lg px-4 py-2 focus:outline-none focus:border-primary focus:border-opacity-100 transition-colors">
+                                <option value="">全部地图</option>
+                                <option value="零号大坝">零号大坝</option>
+                                <option value="长弓溪谷">长弓溪谷</option>
+                                <option value="巴克什">巴克什</option>
+                                <option value="潮汐监狱">潮汐监狱</option>
+                                <option value="航天基地">航天基地</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto scrollbar-thin">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-primary border-opacity-30">
+                                    <th class="py-3 px-4 text-center">日期</th>
+                                    <th class="py-3 px-4 text-center">地图</th>
+                                    <th class="py-3 px-4 text-center">难度</th>
+                                    <th class="py-3 px-4 text-center">生存时长（分钟）</th>
+                                    <th class="py-3 px-4 text-center">战备价值</th>
+                                    <th class="py-3 px-4 text-center">行动收益</th>
+                                    <th class="py-3 px-4 text-center">净收益</th>
+                                    <th class="py-3 px-4 text-center">结果</th>
+                                    <th class="py-3 px-4 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body">
+                                <tr>
+                                    <td colspan="8" class="py-8 text-center text-gray-400">暂无战局记录</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-6 flex justify-between items-center">
+                        <div class="text-sm text-gray-400">
+                            显示 <span id="showing-records">0</span> 条记录，共 <span id="total-records">0</span> 条
+                        </div>
+                        <div class="flex space-x-2">
+                            <button id="prev-page" class="px-3 py-1 rounded border border-primary border-opacity-30 hover:bg-dark-lighter transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fa fa-chevron-left"></i>
+                            </button>
+                            <span id="current-page" class="px-3 py-1">1</span>
+                            <button id="next-page" class="px-3 py-1 rounded border border-primary border-opacity-30 hover:bg-dark-lighter transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fa fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据分析页面 -->
+            <div id="analysis-page" class="hidden space-y-6">
+                <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-6">
+                    <h3 class="text-lg font-semibold mb-4">地图表现分析</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="h-64">
+                            <canvas id="map-performance-chart"></canvas>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="map-profit-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-6">
+                    <h3 class="text-lg font-semibold mb-4">时间趋势分析</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="h-64">
+                            <canvas id="time-distribution-chart"></canvas>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="weekly-trend-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-dark-light bg-opacity-80 backdrop-blur-sm rounded-lg border border-primary border-opacity-30 p-6">
+                    <h3 class="text-lg font-semibold mb-4">智能分析与建议</h3>
+                    <div id="ai-analysis" class="space-y-4">
+                        <div class="p-4 bg-dark rounded-lg border border-primary border-opacity-30">
+                            <div class="flex items-start">
+                                <div class="bg-primary bg-opacity-20 p-2 rounded-full mr-3">
+                                    <i class="fa fa-lightbulb-o text-primary text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-primary">数据收集提示</h4>
+                                    <p class="mt-1">您的战局记录还不够充分，建议继续记录更多战局数据以获得更准确的分析结果。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="relative z-10 bg-dark bg-opacity-80 backdrop-blur-sm border-t border-primary border-opacity-30 py-4">
+        <div class="container mx-auto px-4 text-center text-sm text-gray-400">
+            <p>© 2025 三角洲行动战绩追踪器 | 数据仅存储在本地，保护您的隐私</p>
+        </div>
+    </footer>
+
+    <!-- 通知弹窗 -->
+    <div id="notification" class="fixed bottom-4 right-4 bg-dark-light border border-primary border-opacity-30 rounded-lg p-4 shadow-lg transform translate-y-full opacity-0 transition-all duration-300 z-50 max-w-sm">
+        <div class="flex items-start">
+            <div id="notification-icon" class="mr-3 mt-0.5">
+                <i class="fa fa-check-circle text-success text-xl"></i>
+            </div>
+            <div class="flex-grow">
+                <h4 id="notification-title" class="font-semibold">成功</h4>
+                <p id="notification-message" class="mt-1 text-sm">操作已成功完成</p>
+            </div>
+            <button id="close-notification" class="text-gray-400 hover:text-white ml-4">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 确认删除弹窗 -->
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-dark-light border border-primary border-opacity-30 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold mb-4">确认删除</h3>
+            <p>您确定要删除这条战局记录吗？此操作无法撤销。</p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="cancel-delete" class="px-4 py-2 rounded border border-primary border-opacity-30 hover:bg-dark-lighter transition-colors">
+                    取消
+                </button>
+                <button id="confirm-delete" class="px-4 py-2 bg-danger hover:bg-opacity-80 text-white rounded transition-colors">
+                    确认删除
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let matches = JSON.parse(localStorage.getItem('deltaForceMatches')) || [];
+        let currentPage = 'dashboard-page';
+        let historyPage = 1;
+        const recordsPerPage = 15;
+        let filteredMatches = [...matches];
+        let charts = {};
+        let recordToDelete = null;
+        let editingMatchId = null;
+
+        // 从后端数据库加载数据
+        async function loadMatchesFromBackend() {
+            try {
+                const response = await fetch('http://localhost:5000/api/get-matches');
+                const result = await response.json();
+                if (result.success && result.matches && result.matches.length > 0) {
+                    matches = result.matches;
+                    filteredMatches = [...matches];
+                    saveMatches();
+                }
+            } catch (error) {
+                console.error('从后端加载数据失败:', error);
+            }
+        }
+
+        // 地图难度配置
+        const mapDifficultyConfig = {
+            '零号大坝': {
+                difficulties: [
+                    { value: 'regular', label: '常规', timeLimit: 30 },
+                    { value: 'confidential', label: '机密', timeLimit: 25 },
+                    { value: 'topsecret', label: '绝密', timeLimit: 30 },
+                    { value: 'eternalnight', label: '永夜', timeLimit: 30 }
+                ]
+            },
+            '长弓溪谷': {
+                difficulties: [
+                    { value: 'regular', label: '常规', timeLimit: 30 },
+                    { value: 'confidential', label: '机密', timeLimit: 25 },
+                    { value: 'topsecret', label: '绝密', timeLimit: 30 }
+                ]
+            },
+            '巴克什': {
+                difficulties: [
+                    { value: 'confidential', label: '机密', timeLimit: 30 },
+                    { value: 'topsecret', label: '绝密', timeLimit: 30 }
+                ]
+            },
+            '潮汐监狱': {
+                difficulties: [
+                    { value: 'topsecret', label: '绝密', timeLimit: 30 }
+                ]
+            },
+            '航天基地': {
+                difficulties: [
+                    { value: 'confidential', label: '机密', timeLimit: 30 },
+                    { value: 'topsecret', label: '绝密', timeLimit: 30 }
+                ]
+            }
+        };
+
+        // 难度显示名称映射
+        const difficultyLabels = {
+            'regular': '常规',
+            'confidential': '机密',
+            'topsecret': '绝密',
+            'eternalnight': '永夜'
+        };
+
+        // 结果显示名称映射
+        const resultLabels = {
+            'success': '撤离成功',
+            'failed': '撤离失败',
+            'teamkill': '友军击杀',
+            'disconnected': '断线'
+        };
+
+        // 根据地图更新难度选项
+        function updateDifficultyOptions() {
+            const mapSelect = document.getElementById('map');
+            const difficultySelect = document.getElementById('difficulty');
+            const selectedMap = mapSelect.value;
+
+            difficultySelect.innerHTML = '<option value="">请选择难度</option>';
+
+            if (selectedMap && mapDifficultyConfig[selectedMap]) {
+                const difficulties = mapDifficultyConfig[selectedMap].difficulties;
+                difficulties.forEach(diff => {
+                    const option = document.createElement('option');
+                    option.value = diff.value;
+                    option.textContent = diff.label;
+                    difficultySelect.appendChild(option);
+                });
+            }
+        }
+
+        // 验证生存时长
+        function validateDuration() {
+            const mapSelect = document.getElementById('map');
+            const difficultySelect = document.getElementById('difficulty');
+            const durationInput = document.getElementById('duration');
+
+            const selectedMap = mapSelect.value;
+            const selectedDifficulty = difficultySelect.value;
+            const duration = parseFloat(durationInput.value);
+
+            if (!selectedMap || !selectedDifficulty || isNaN(duration)) {
+                return true;
+            }
+
+            const mapConfig = mapDifficultyConfig[selectedMap];
+            if (!mapConfig) return true;
+
+            const diffConfig = mapConfig.difficulties.find(d => d.value === selectedDifficulty);
+            if (!diffConfig) return true;
+
+            if (duration > diffConfig.timeLimit) {
+                alert(`地图【${selectedMap}】 难度【${diffConfig.label}】 行动限时 ${diffConfig.timeLimit}分钟 请检查实际生存时长`);
+                return false;
+            }
+
+            return true;
+        }
+
+        // DOM 加载完成后执行
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 初始化当前时间
+            const now = new Date();
+            const dateTimeString = now.toISOString().slice(0, 16);
+            document.getElementById('entry-time').value = dateTimeString;
+
+            // 从后端数据库加载数据
+            await loadMatchesFromBackend();
+            filteredMatches = [...matches];
+
+            // 初始化页面
+            updateDashboard();
+            updateStats();
+            initCharts();
+            generateAIAnalysis();
+            
+            // 初始化历史记录（先筛选再渲染，避免递归）
+            filterHistory();
+
+            // 导航事件监听
+            document.getElementById('nav-dashboard').addEventListener('click', () => switchPage('dashboard-page'));
+            document.getElementById('nav-record').addEventListener('click', () => switchPage('record-page'));
+            document.getElementById('nav-history').addEventListener('click', () => switchPage('history-page'));
+            document.getElementById('nav-analysis').addEventListener('click', () => switchPage('analysis-page'));
+            document.getElementById('view-all-history').addEventListener('click', () => switchPage('history-page'));
+
+            // 地图和难度联动
+            document.getElementById('map').addEventListener('change', function() {
+                updateDifficultyOptions();
+                document.getElementById('difficulty').value = '';
+            });
+
+            // 表单提交事件
+            document.getElementById('match-form').addEventListener('submit', handleMatchFormSubmit);
+
+            // 收益趋势时间过滤器
+            document.querySelectorAll('.time-filter').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.time-filter').forEach(b => b.classList.remove('active', 'bg-primary', 'bg-opacity-20', 'text-primary'));
+                    this.classList.add('active', 'bg-primary', 'bg-opacity-20', 'text-primary');
+                    updateProfitTrendChart(this.dataset.filter);
+                });
+            });
+
+            // 历史记录筛选和分页
+            document.getElementById('search-input').addEventListener('input', filterHistory);
+            document.getElementById('filter-result').addEventListener('change', filterHistory);
+            document.getElementById('filter-map').addEventListener('change', filterHistory);
+            document.getElementById('prev-page').addEventListener('click', () => changeHistoryPage(-1));
+            document.getElementById('next-page').addEventListener('click', () => changeHistoryPage(1));
+
+            // 数据导入导出
+            document.getElementById('export-data').addEventListener('click', exportData);
+            document.getElementById('import-data').addEventListener('click', () => document.getElementById('file-input').click());
+            document.getElementById('file-input').addEventListener('change', importData);
+
+            // 主题切换
+            document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
+            // 通知关闭按钮
+            document.getElementById('close-notification').addEventListener('click', hideNotification);
+
+            // 删除确认
+            document.getElementById('cancel-delete').addEventListener('click', () => {
+                document.getElementById('delete-modal').classList.add('hidden');
+                recordToDelete = null;
+            });
+            document.getElementById('confirm-delete').addEventListener('click', confirmDelete);
+        });
+
+        // 切换页面
+        function switchPage(pageId) {
+            // 更新导航按钮状态
+            document.querySelectorAll('nav button').forEach(btn => {
+                btn.classList.remove('bg-primary', 'bg-opacity-20', 'text-primary');
+                btn.classList.add('hover:bg-dark-lighter');
+            });
+            
+            const navMap = {
+                'dashboard-page': 'nav-dashboard',
+                'record-page': 'nav-record',
+                'history-page': 'nav-history',
+                'analysis-page': 'nav-analysis'
+            };
+            
+            const activeNav = document.getElementById(navMap[pageId]);
+            if (activeNav) {
+                activeNav.classList.add('bg-primary', 'bg-opacity-20', 'text-primary');
+                activeNav.classList.remove('hover:bg-dark-lighter');
+            }
+
+            // 隐藏所有页面，显示目标页面
+            document.querySelectorAll('#dashboard-page, #record-page, #history-page, #analysis-page').forEach(page => {
+                page.classList.add('hidden');
+            });
+            
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.remove('hidden');
+                console.log(`Switched to page: ${pageId}`);
+            } else {
+                console.error(`Page not found: ${pageId}`);
+            }
+
+            currentPage = pageId;
+
+            // 如果切换到分析页面，更新图表
+            if (pageId === 'analysis-page') {
+                updateCharts();
+            }
+        }
+
+        // 保存记录到后端
+        async function saveToBackend(match) {
+            try {
+                const response = await fetch('http://localhost:5000/api/save-match', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(match)
+                });
+                const result = await response.json();
+                if (!result.success) {
+                    console.error('后端保存失败:', result.message);
+                }
+                return result;
+            } catch (error) {
+                console.error('后端通信错误:', error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        // 处理表单提交
+        async function handleMatchFormSubmit(e) {
+            e.preventDefault();
+
+            // 验证生存时长
+            if (!validateDuration()) {
+                return;
+            }
+            
+            // 如果是编辑模式，先删除原记录
+            if (editingMatchId) {
+                matches = matches.filter(m => m.id !== editingMatchId);
+                await deleteFromBackend(editingMatchId);
+                editingMatchId = null;
+            }
+            
+            const formData = new FormData(e.target);
+            const difficultyValue = formData.get('difficulty');
+            const resultValue = formData.get('result');
+            const match = {
+                id: Date.now().toString(),
+                entryValue: parseInt(formData.get('entryValue')),
+                exitValue: parseInt(formData.get('exitValue')),
+                entryTime: formData.get('entryTime'),
+                duration: parseFloat(formData.get('duration')),
+                map: formData.get('map'),
+                difficulty: difficultyLabels[difficultyValue] || difficultyValue,
+                result: resultLabels[resultValue] || resultValue,
+                notes: formData.get('notes'),
+                profit: parseInt(formData.get('exitValue')) - parseInt(formData.get('entryValue')),
+                timestamp: new Date().toISOString()
+            };
+
+            // 添加到记录并保存
+            matches.push(match);
+            saveMatches();
+
+            // 保存到后端数据库
+            await saveToBackend(match);
+
+            // 更新页面
+            updateDashboard();
+            filterHistory();
+            updateStats();
+            updateCharts();
+            generateAIAnalysis();
+
+            // 重置表单
+            e.target.reset();
+            const now = new Date();
+            const dateTimeString = now.toISOString().slice(0, 16);
+            document.getElementById('entry-time').value = dateTimeString;
+            document.getElementById('difficulty').innerHTML = '<option value="">请选择难度</option>';
+
+            // 显示通知
+            showNotification('成功', '战局记录已保存', 'success');
+
+            // 切换到仪表盘
+            switchPage('dashboard-page');
+        }
+
+        // 更新仪表盘
+        function updateDashboard() {
+            // 更新最近战局
+            const recentMatchesEl = document.getElementById('recent-matches');
+            if (matches.length === 0) {
+                recentMatchesEl.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-gray-400">暂无战局记录</td></tr>';
+                return;
+            }
+
+            // 按时间排序，最新的在前
+            const sortedMatches = [...matches].sort((a, b) => new Date(b.entryTime) - new Date(a.entryTime));
+            const recentMatches = sortedMatches.slice(0, 5);
+
+            recentMatchesEl.innerHTML = recentMatches.map(match => `
+                <tr class="border-b border-primary border-opacity-10 hover:bg-dark hover:bg-opacity-40 transition-colors">
+                    <td class="py-3 px-4 text-center">${formatDateTime(match.entryTime)}</td>
+                    <td class="py-3 px-4 text-center">${match.map}</td>
+                    <td class="py-3 px-4 text-center">${getDifficultyText(match.difficulty)}</td>
+                    <td class="py-3 px-4 text-center">${Number(match.duration).toFixed(1)}</td>
+                    <td class="py-3 px-4 text-center">${match.entryValue}</td>
+                    <td class="py-3 px-4 text-center">${match.exitValue}</td>
+                    <td class="py-3 px-4 text-center ${match.profit >= 0 ? 'text-success' : 'text-danger'}">${match.profit >= 0 ? '+' : ''}${match.profit}</td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="px-2 py-1 rounded-full text-xs ${getResultClass(match.result)}">
+                            ${getResultText(match.result)}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 渲染历史记录表格
+        function renderHistoryTable() {
+            const tableBody = document.getElementById('history-table-body');
+            const showingRecordsEl = document.getElementById('showing-records');
+            const totalRecordsEl = document.getElementById('total-records');
+            const currentPageEl = document.getElementById('current-page');
+            const prevPageBtn = document.getElementById('prev-page');
+            const nextPageBtn = document.getElementById('next-page');
+
+            // 更新记录计数
+            totalRecordsEl.textContent = filteredMatches.length;
+            showingRecordsEl.textContent = filteredMatches.length;
+
+            // 分页
+            const startIndex = (historyPage - 1) * recordsPerPage;
+            const endIndex = startIndex + recordsPerPage;
+            const paginatedMatches = filteredMatches.slice(startIndex, endIndex);
+
+            // 更新当前页码
+            currentPageEl.textContent = historyPage;
+
+            // 更新分页按钮状态
+            prevPageBtn.disabled = historyPage === 1;
+            nextPageBtn.disabled = endIndex >= filteredMatches.length;
+
+            // 渲染表格内容
+            if (paginatedMatches.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-gray-400">没有找到匹配的记录</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = paginatedMatches.map(match => `
+                <tr class="border-b border-primary border-opacity-10 hover:bg-dark hover:bg-opacity-40 transition-colors">
+                    <td class="py-3 px-4 text-center">${formatDateTime(match.entryTime)}</td>
+                    <td class="py-3 px-4 text-center">${match.map}</td>
+                    <td class="py-3 px-4 text-center">${getDifficultyText(match.difficulty)}</td>
+                    <td class="py-3 px-4 text-center">${Number(match.duration).toFixed(1)}</td>
+                    <td class="py-3 px-4 text-center">${match.entryValue}</td>
+                    <td class="py-3 px-4 text-center">${match.exitValue}</td>
+                    <td class="py-3 px-4 text-center ${match.profit >= 0 ? 'text-success' : 'text-danger'}">${match.profit >= 0 ? '+' : ''}${match.profit}</td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="px-2 py-1 rounded-full text-xs ${getResultClass(match.result)}">
+                            ${getResultText(match.result)}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <button class="text-primary hover:text-secondary transition-colors edit-match" data-id="${match.id}" title="编辑">
+                            <i class="fa fa-pencil"></i>
+                        </button>
+                        <button class="text-danger hover:text-opacity-80 transition-colors ml-2 delete-match" data-id="${match.id}" title="删除">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // 添加编辑和删除事件监听
+            document.querySelectorAll('.edit-match').forEach(btn => {
+                btn.addEventListener('click', () => editMatch(btn.dataset.id));
+            });
+
+            document.querySelectorAll('.delete-match').forEach(btn => {
+                btn.addEventListener('click', () => confirmDeleteMatch(btn.dataset.id));
+            });
+        }
+
+        // 筛选历史记录
+        function filterHistory() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const resultFilter = document.getElementById('filter-result').value;
+            const mapFilter = document.getElementById('filter-map').value;
+
+            filteredMatches = matches
+                .filter(match => {
+                    const matchesSearch =
+                        match.notes?.toLowerCase().includes(searchTerm) ||
+                        match.map.toLowerCase().includes(searchTerm) ||
+                        formatDateTime(match.entryTime).toLowerCase().includes(searchTerm);
+
+                    const matchesResult = resultFilter ? match.result === resultFilter : true;
+                    const matchesMap = mapFilter ? match.map === mapFilter : true;
+
+                    return matchesSearch && matchesResult && matchesMap;
+                })
+                .sort((a, b) => new Date(b.entryTime) - new Date(a.entryTime));
+
+            // 重置页码
+            historyPage = 1;
+
+            // 重新渲染表格
+            renderHistoryTable();
+        }
+
+        // 切换历史记录页码
+        function changeHistoryPage(direction) {
+            const maxPage = Math.ceil(filteredMatches.length / recordsPerPage);
+            historyPage = Math.max(1, Math.min(maxPage, historyPage + direction));
+            renderHistoryTable();
+        }
+
+        // 编辑战局记录
+        function editMatch(id) {
+            const match = matches.find(m => m.id === id);
+            if (!match) return;
+
+            editingMatchId = id;
+
+            // 填充表单
+            document.getElementById('entry-value').value = match.entryValue;
+            document.getElementById('exit-value').value = match.exitValue;
+            document.getElementById('entry-time').value = match.entryTime;
+            document.getElementById('duration').value = match.duration;
+            document.getElementById('map').value = match.map;
+            document.getElementById('difficulty').value = match.difficulty;
+            document.getElementById('result').value = match.result;
+            document.getElementById('notes').value = match.notes || '';
+
+            // 切换到记录页面
+            switchPage('record-page');
+
+            // 显示通知
+            showNotification('编辑模式', '已加载战局记录进行编辑', 'info');
+        }
+
+        // 确认删除战局记录
+        function confirmDeleteMatch(id) {
+            recordToDelete = id;
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        // 确认删除
+        // 从后端删除记录
+        async function deleteFromBackend(id) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/delete-match/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (!result.success) {
+                    console.error('后端删除失败:', result.message);
+                }
+                return result;
+            } catch (error) {
+                console.error('后端通信错误:', error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        // 确认删除记录
+        async function confirmDelete() {
+            if (!recordToDelete) return;
+
+            const deleteId = recordToDelete;
+
+            // 删除记录
+            matches = matches.filter(m => m.id !== deleteId);
+            saveMatches();
+
+            // 从后端数据库删除
+            await deleteFromBackend(deleteId);
+
+            // 更新页面
+            updateDashboard();
+            filterHistory();
+            updateStats();
+            updateCharts();
+            generateAIAnalysis();
+
+            // 关闭弹窗
+            document.getElementById('delete-modal').classList.add('hidden');
+            recordToDelete = null;
+
+            // 显示通知
+            showNotification('成功', '战局记录已删除', 'success');
+        }
+
+        // 格式化赚损比
+        function formatProfitLossRatio(value) {
+            if (value >= 1000) {
+                return (value / 1000).toFixed(1) + 'M';
+            } else {
+                return Math.round(value) + 'K';
+            }
+        }
+
+        // 更新统计数据
+        function updateStats() {
+            if (matches.length === 0) {
+                // 重置所有统计数据
+                document.getElementById('total-matches').textContent = '0';
+                document.getElementById('success-rate').textContent = '0%';
+                document.getElementById('avg-profit').textContent = '0K';
+                document.getElementById('success-rate-bar').style.width = '0%';
+                document.getElementById('avg-profit-bar').style.width = '0%';
+                
+                document.getElementById('stat-total-matches').textContent = '0';
+                document.getElementById('stat-success-rate').textContent = '0%';
+                document.getElementById('stat-avg-profit').textContent = '0K';
+                document.getElementById('stat-total-time').textContent = '0';
+                return;
+            }
+
+            // 计算统计数据
+            const totalMatches = matches.length;
+            const successfulMatches = matches.filter(m => m.result === 'success' || m.result === '撤离成功').length;
+            const failedMatches = matches.filter(m => m.result === 'failed' || m.result === '撤离失败' || m.result === 'teamkill' || m.result === '友军击杀' || m.result === 'disconnected' || m.result === '断线').length;
+            const successRate = (successfulMatches / totalMatches) * 100;
+            const totalProfit = matches.reduce((sum, m) => sum + m.profit, 0);
+            const avgProfit = totalProfit / totalMatches;
+            const totalExitValue = matches.reduce((sum, m) => sum + m.exitValue, 0);
+            const profitLossRatio = failedMatches > 0 ? totalExitValue / failedMatches / 1000 : 0;
+            const totalTime = matches.reduce((sum, m) => sum + Number(m.duration), 0) / 60; // 转换为小时
+
+            // 更新侧边栏统计
+            document.getElementById('total-matches').textContent = totalMatches;
+            document.getElementById('success-rate').textContent = `${successRate.toFixed(1)}%`;
+            document.getElementById('avg-profit').textContent = formatProfitLossRatio(profitLossRatio);
+            document.getElementById('success-rate-bar').style.width = `${Math.min(100, successRate)}%`;
+            document.getElementById('avg-profit-bar').style.width = `${Math.min(100, Math.max(0, (profitLossRatio / 1000) * 100))}%`;
+
+            // 更新仪表盘统计
+            document.getElementById('stat-total-matches').textContent = totalMatches;
+            document.getElementById('stat-success-rate').textContent = `${successRate.toFixed(1)}%`;
+            document.getElementById('stat-avg-profit').textContent = formatProfitLossRatio(profitLossRatio);
+            document.getElementById('stat-total-time').textContent = totalTime.toFixed(1);
+        }
+
+        // 初始化图表
+        function initCharts() {
+            // 收益趋势图
+            const profitTrendCtx = document.getElementById('profit-trend-chart').getContext('2d');
+            charts.profitTrend = new Chart(profitTrendCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: '收益',
+                            data: [],
+                            borderColor: '#00ff88',
+                            backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true,
+                            segment: {
+                                borderColor: function(ctx) {
+                                    const p0 = ctx.p0.parsed.y;
+                                    const p1 = ctx.p1.parsed.y;
+                                    if (p0 < 0 && p1 < 0) return '#ff4d4f';
+                                    if (p0 >= 0 && p1 >= 0) return '#00ff88';
+                                    return null;
+                                }
+                            }
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 撤离情况分布图
+            const evacuationDistributionCtx = document.getElementById('evacuation-distribution-chart').getContext('2d');
+            charts.evacuationDistribution = new Chart(evacuationDistributionCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['成功撤离', '撤离失败'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: [
+                            '#52c41a',
+                            '#ff4d4f'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                padding: 20
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 地图表现分析图
+            const mapPerformanceCtx = document.getElementById('map-performance-chart').getContext('2d');
+            charts.mapPerformance = new Chart(mapPerformanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '成功率',
+                        data: [],
+                        backgroundColor: 'rgba(82, 196, 26, 0.7)',
+                        borderColor: '#52c41a',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 地图收益分析图
+            const mapProfitCtx = document.getElementById('map-profit-chart').getContext('2d');
+            charts.mapProfit = new Chart(mapProfitCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '平均收益',
+                        data: [],
+                        backgroundColor: 'rgba(255, 169, 64, 0.7)',
+                        borderColor: '#ffa940',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 时间分布图
+            const timeDistributionCtx = document.getElementById('time-distribution-chart').getContext('2d');
+            charts.timeDistribution = new Chart(timeDistributionCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['0-5分钟', '5-10分钟', '10-15分钟', '15-20分钟', '20-30分钟'],
+                    datasets: [{
+                        label: '战局数量',
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: 'rgba(24, 144, 255, 0.7)',
+                        borderColor: '#1890ff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 周趋势图
+            const weeklyTrendCtx = document.getElementById('weekly-trend-chart').getContext('2d');
+            charts.weeklyTrend = new Chart(weeklyTrendCtx, {
+                type: 'line',
+                data: {
+                    labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                    datasets: [{
+                        label: '战局数量',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#722ed1',
+                        backgroundColor: 'rgba(114, 46, 209, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 更新图表数据
+            updateCharts();
+        }
+
+        // 更新图表数据
+        function updateCharts() {
+            if (matches.length === 0) {
+                // 清空所有图表数据
+                Object.values(charts).forEach(chart => {
+                    if (chart.data.datasets) {
+                        chart.data.datasets.forEach(dataset => {
+                            dataset.data = [];
+                        });
+                        chart.update();
+                    }
+                });
+                return;
+            }
+
+            // 按时间排序，最新的在后
+            const sortedMatches = [...matches].sort((a, b) => new Date(a.entryTime) - new Date(b.entryTime));
+            const recentMatches = sortedMatches.slice(-10); // 最近10场
+
+            // 更新收益趋势图
+            updateProfitTrendChart('week');
+
+            // 更新撤离情况分布图
+            const evacuationCounts = {
+                'success': matches.filter(m => m.result === 'success' || m.result === '撤离成功').length,
+                'failed': matches.filter(m => m.result === 'failed' || m.result === '撤离失败' || m.result === 'teamkill' || m.result === '友军击杀' || m.result === 'disconnected' || m.result === '断线').length
+            };
+            charts.evacuationDistribution.data.datasets[0].data = [
+                evacuationCounts.success,
+                evacuationCounts.failed
+            ];
+            charts.evacuationDistribution.update();
+
+            // 更新地图表现分析图
+            const maps = [...new Set(matches.map(m => m.map))];
+            const mapSuccessRates = maps.map(map => {
+                const mapMatches = matches.filter(m => m.map === map);
+                const successCount = mapMatches.filter(m => m.result === 'success' || m.result === '撤离成功').length;
+                return (successCount / mapMatches.length) * 100;
+            });
+            charts.mapPerformance.data.labels = maps;
+            charts.mapPerformance.data.datasets[0].data = mapSuccessRates;
+            charts.mapPerformance.update();
+
+            // 更新地图收益分析图
+            const mapAvgProfits = maps.map(map => {
+                const mapMatches = matches.filter(m => m.map === map);
+                const totalProfit = mapMatches.reduce((sum, m) => sum + m.profit, 0);
+                return totalProfit / mapMatches.length;
+            });
+            charts.mapProfit.data.labels = maps;
+            charts.mapProfit.data.datasets[0].data = mapAvgProfits;
+            charts.mapProfit.update();
+
+            // 更新时间分布图
+            const timeDistribution = [0, 0, 0, 0, 0];
+            matches.forEach(m => {
+                if (m.duration <= 5) timeDistribution[0]++;
+                else if (m.duration <= 10) timeDistribution[1]++;
+                else if (m.duration <= 15) timeDistribution[2]++;
+                else if (m.duration <= 20) timeDistribution[3]++;
+                else if (m.duration <= 30) timeDistribution[4]++;
+            });
+            charts.timeDistribution.data.datasets[0].data = timeDistribution;
+            charts.timeDistribution.update();
+
+            // 更新周趋势图
+            const weeklyData = [0, 0, 0, 0, 0, 0, 0];
+            matches.forEach(m => {
+                const dayOfWeek = new Date(m.entryTime).getDay();
+                weeklyData[dayOfWeek]++;
+            });
+            // 调整顺序，使周一在前
+            const sunday = weeklyData.shift();
+            weeklyData.push(sunday);
+            charts.weeklyTrend.data.datasets[0].data = weeklyData;
+            charts.weeklyTrend.update();
+        }
+
+        // 生成智能分析
+        function generateAIAnalysis() {
+            const aiAnalysisEl = document.getElementById('ai-analysis');
+            
+            if (matches.length < 5) {
+                aiAnalysisEl.innerHTML = `
+                    <div class="p-4 bg-dark rounded-lg border border-primary border-opacity-30">
+                        <div class="flex items-start">
+                            <div class="bg-primary bg-opacity-20 p-2 rounded-full mr-3">
+                                <i class="fa fa-lightbulb-o text-primary text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-primary">数据收集提示</h4>
+                                <p class="mt-1">您的战局记录还不够充分，建议继续记录更多战局数据以获得更准确的分析结果。</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 计算统计数据
+            const totalMatches = matches.length;
+            const successfulMatches = matches.filter(m => m.result === 'success' || m.result === '撤离成功').length;
+            const successRate = (successfulMatches / totalMatches) * 100;
+            const totalProfit = matches.reduce((sum, m) => sum + m.profit, 0);
+            const avgProfit = totalProfit / totalMatches;
+            const avgDuration = matches.reduce((sum, m) => sum + Number(m.duration), 0) / totalMatches;
+
+            // 分析地图表现
+            const maps = [...new Set(matches.map(m => m.map))];
+            const mapStats = maps.map(map => {
+                const mapMatches = matches.filter(m => m.map === map);
+                const successCount = mapMatches.filter(m => m.result === 'success' || m.result === '撤离成功').length;
+                const successRate = (successCount / mapMatches.length) * 100;
+                const totalProfit = mapMatches.reduce((sum, m) => sum + m.profit, 0);
+                const avgProfit = totalProfit / mapMatches.length;
+                return {
+                    map,
+                    count: mapMatches.length,
+                    successRate,
+                    avgProfit
+                };
+            });
+
+            // 找出最佳和最差地图
+            mapStats.sort((a, b) => b.successRate - a.successRate);
+            const bestMap = mapStats[0];
+            const worstMap = mapStats[mapStats.length - 1];
+
+            // 分析时间趋势
+            const timeDistribution = [0, 0, 0, 0, 0];
+            matches.forEach(m => {
+                if (m.duration <= 5) timeDistribution[0]++;
+                else if (m.duration <= 10) timeDistribution[1]++;
+                else if (m.duration <= 15) timeDistribution[2]++;
+                else if (m.duration <= 20) timeDistribution[3]++;
+                else if (m.duration <= 30) timeDistribution[4]++;
+            });
+            const mostCommonDuration = timeDistribution.indexOf(Math.max(...timeDistribution));
+            const durationLabels = ['0-5分钟', '5-10分钟', '10-15分钟', '15-20分钟', '20-30分钟'];
+
+            // 生成分析内容
+            let analysisHTML = '';
+
+            // 总体表现分析
+            if (successRate < 40) {
+                analysisHTML += `
+                    <div class="p-4 bg-dark rounded-lg border border-primary border-opacity-30">
+                        <div class="flex items-start">
+                            <div class="bg-warning bg-opacity-20 p-2 rounded-full mr-3">
+                                <i class="fa fa-exclamation-triangle text-warning text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-warning">撤离成功率分析</h4>
+                                <p class="mt-1">您的撤离成功率为 ${successRate.toFixed(1)}%，低于平均水平。建议您：</p>
+                                <ul class="mt-2 list-disc list-inside space-y-1 text-sm">
+                                    <li>选择合适的撤离点，避开热门区域</li>
+                                    <li>合理规划路线，预留足够的撤离时间</li>
+                                    <li>在战局后期避免不必要的战斗</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (successRate > 60) {
+                analysisHTML += `
+                    <div class="p-4 bg-dark rounded-lg border border-primary border-opacity-30">
+                        <div class="flex items-start">
+                            <div class="bg-success bg-opacity-20 p-2 rounded-full mr-3">
+                                <i class="fa fa-trophy text-success text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-success">撤离成功率分析</h4>
+                                <p class="mt-1">您的撤离成功率为 ${successRate.toFixed(1)}%，表现优秀！建议您：</p>
+                                <ul class="mt-2 list-disc list-inside space-y-1 text-sm">
+                                    <li>继续保持当前的战术策略</li>
+                                    <li>尝试携带更高价值的装备以提高收益</li>
+                                    <li>可以考虑帮助队友提高撤离成功率</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 收益分析
+            if (avgProfit < 0) {
+                analysisHTML += `
+                    <div class="p-4 bg-dark rounded-lg border border-primary border-opacity-30">
+                        <div class="flex items-start">
+                            <div class="bg-danger bg-opacity-20 p-2 rounded-full mr-3">
+                                <i class="fa fa-money text-danger text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-danger">战备价值分析</h4>
+                                <p class="mt-1">您的平均收益为 ${Math.round(avgProfit)} 点，处于亏损状态。建议您：</p>
+                                <ul class="mt-2 list-disc list-inside space-y-1 text-sm">
+                                    <li>降低带入的战备价值，减少损失风险</li>
+                                    <li>优先寻找高价值物品，提高回报率</li>
+                                    <li>避免与其他玩家正面冲突，减少死亡概率</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (avgProfit > 500) {
+                analysisHTML += `
+                    <div class="p-4 bg-dark rounded-lg border border-primary border-opacity-30">
+                        <div class="flex items-start">
+                            <div class="bg-success bg-opacity-20 p-2 rounded-full mr-3">
+                                <i class="fa fa-line-chart text-success text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-success">战备价值分析</h4>
+                                <p class="mt-1">您的平均收益为 ${Math.round(avgProfit)} 点，收益良好！建议您：</p>
+                                <ul class="mt-2 list-disc list-inside space-y-1 text-sm">
+                                    <li>继续优化您的 loot 路线和策略</li>
+                                    <li>可以尝试挑战更高难度的区域</li>
+                                    <li>考虑投资更高级的装备以提高效率</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 地图分析
+            if (mapStats.length > 1) {
+                analysisHTML += `
+                    <div class="p-4 bg-dark rounded-lg border border-primary border-opacity-30">
+                        <div class="flex items-start">
+                            <div class="bg-primary bg-opacity-20 p-2 rounded-full mr-3">
+                                <i class="fa fa-map text-primary text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-primary">地图表现分析</h4>
+                                <p class="mt-1">您在不同地图上的表现有所差异：</p>
+                                <ul class="mt-2 list-disc list-inside space-y-1 text-sm">
+                                    <li>您在 <span class="text-success font-semibold">${bestMap.map}</span> 表现最佳，成功率为 ${bestMap.successRate.toFixed(1)}%</li>
+                                    <li>您在 <span class="text-danger font-semibold">${worstMap.map}</span> 表现较差，成功率为 ${worstMap.successRate.toFixed(1)}%</li>
+                                </ul>
+                                <p class="mt-2 text-sm">建议您多在表现较好的地图游玩，或者分析在较差地图上的失败原因并改进策略。</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 时间分析
+            analysisHTML += `
+                <div class="p-4 bg-dark rounded-lg border border-primary border-opacity-30">
+                    <div class="flex items-start">
+                        <div class="bg-info bg-opacity-20 p-2 rounded-full mr-3">
+                            <i class="fa fa-clock-o text-info text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-info">时间管理分析</h4>
+                            <p class="mt-1">您的战局时长分布：</p>
+                            <ul class="mt-2 list-disc list-inside space-y-1 text-sm">
+                                <li>大多数战局时长在 <span class="font-semibold">${durationLabels[mostCommonDuration]}</span></li>
+                                <li>平均战局时长为 <span class="font-semibold">${avgDuration.toFixed(1)} 分钟</span></li>
+                            </ul>
+                            <p class="mt-2 text-sm">建议根据战局时长合理规划行动，确保有足够时间撤离。</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 如果没有生成任何分析，显示默认消息
+            if (!analysisHTML) {
+                analysisHTML = `
+                    <div class="p-4 bg-dark rounded-lg border border-primary border-opacity-30">
+                        <div class="flex items-start">
+                            <div class="bg-primary bg-opacity-20 p-2 rounded-full mr-3">
+                                <i class="fa fa-info-circle text-primary text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-primary">分析提示</h4>
+                                <p class="mt-1">您的战局数据正在积累中，随着记录的增加，我们将能够提供更详细的分析和建议。</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            aiAnalysisEl.innerHTML = analysisHTML;
+        }
+
+        // 导出数据
+        function exportData() {
+            if (matches.length === 0) {
+                showNotification('导出失败', '没有数据可导出', 'error');
+                return;
+            }
+
+            const dataStr = JSON.stringify(matches, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `delta-force-matches-${formatDate(new Date())}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showNotification('成功', '数据已导出', 'success');
+        }
+
+        // 导入数据
+        function importData(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const importedMatches = JSON.parse(event.target.result);
+                    
+                    // 验证数据格式
+                    if (!Array.isArray(importedMatches)) {
+                        throw new Error('无效的数据格式');
+                    }
+
+                    // 合并数据
+                    const originalCount = matches.length;
+                    matches = [...matches, ...importedMatches];
+                    saveMatches();
+
+                    // 更新页面
+                    updateDashboard();
+                    renderHistoryTable();
+                    updateStats();
+                    updateCharts();
+                    generateAIAnalysis();
+
+                    showNotification('成功', `已导入 ${importedMatches.length} 条记录`, 'success');
+                } catch (error) {
+                    showNotification('导入失败', '无效的文件格式', 'error');
+                }
+            };
+            reader.readAsText(file);
+
+            // 重置文件输入
+            e.target.value = '';
+        }
+
+        // 切换主题
+        function toggleTheme() {
+            // 这里只是一个示例，实际上我们没有实现完整的主题切换功能
+            showNotification('提示', '主题切换功能正在开发中', 'info');
+        }
+
+        // 显示通知
+        function showNotification(title, message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const titleEl = document.getElementById('notification-title');
+            const messageEl = document.getElementById('notification-message');
+            const iconEl = document.getElementById('notification-icon');
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            // 设置图标和颜色
+            let iconClass = 'fa-check-circle text-success';
+            if (type === 'error') {
+                iconClass = 'fa-exclamation-circle text-danger';
+            } else if (type === 'warning') {
+                iconClass = 'fa-exclamation-triangle text-warning';
+            } else if (type === 'info') {
+                iconClass = 'fa-info-circle text-info';
+            }
+
+            iconEl.innerHTML = `<i class="fa ${iconClass} text-xl"></i>`;
+
+            // 显示通知
+            notification.classList.remove('translate-y-full', 'opacity-0');
+
+            // 3秒后自动隐藏
+            setTimeout(hideNotification, 3000);
+        }
+
+        // 隐藏通知
+        function hideNotification() {
+            const notification = document.getElementById('notification');
+            notification.classList.add('translate-y-full', 'opacity-0');
+        }
+
+        // 保存记录到本地存储
+        function saveMatches() {
+            localStorage.setItem('deltaForceMatches', JSON.stringify(matches));
+        }
+
+        // 格式化日期时间
+        function formatDateTime(dateTimeString) {
+            const date = new Date(dateTimeString);
+            return `${date.getFullYear()}-${padZero(date.getMonth() + 1)}-${padZero(date.getDate())} ${padZero(date.getHours())}:${padZero(date.getMinutes())}`;
+        }
+
+        // 格式化日期
+        function formatDate(date) {
+            if (typeof date === 'string') {
+                date = new Date(date);
+            }
+            return `${date.getMonth() + 1}/${date.getDate()}`;
+        }
+
+        // 更新收益趋势图
+        function updateProfitTrendChart(timeFilter) {
+            const now = new Date();
+            let labels = [];
+
+            switch (timeFilter) {
+                case 'day':
+                    // 当天：x轴为战局次数，只显示正收益
+                    if (matches.length === 0) {
+                        charts.profitTrend.data.labels = [];
+                        charts.profitTrend.data.datasets = [{
+                            label: '正收益',
+                            data: [],
+                            borderColor: '#52c41a',
+                            backgroundColor: 'rgba(82, 196, 26, 0.3)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true
+                        }];
+                        if (charts.profitTrend.options.scales) {
+                            charts.profitTrend.options.scales.y.beginAtZero = true;
+                        }
+                        charts.profitTrend.update();
+                        return;
+                    }
+
+                    const todayMatches = matches.filter(m => {
+                        const matchDate = new Date(m.entryTime);
+                        return matchDate.toDateString() === now.toDateString() && m.profit >= 0;
+                    });
+                    todayMatches.sort((a, b) => new Date(a.entryTime) - new Date(b.entryTime));
+                    labels = todayMatches.map((m, index) => `战局${index + 1}`);
+                    const dayData = todayMatches.map(m => m.profit);
+                    
+                    charts.profitTrend.data.labels = labels;
+                    charts.profitTrend.data.datasets = [{
+                        label: '正收益',
+                        data: dayData,
+                        borderColor: '#52c41a',
+                        backgroundColor: 'rgba(82, 196, 26, 0.3)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        fill: true
+                    }];
+                    if (charts.profitTrend.options.scales) {
+                        charts.profitTrend.options.scales.y.beginAtZero = true;
+                    }
+                    charts.profitTrend.update();
+                    break;
+
+                case 'week':
+                    // 本周：只显示正收益（从周一开始）
+                    const startOfWeek = new Date(now);
+                    const dayOfWeek = now.getDay();
+                    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                    startOfWeek.setDate(now.getDate() - daysToMonday);
+                    startOfWeek.setHours(0, 0, 0, 0);
+                    
+                    let weekData = [];
+                    
+                    for (let i = 0; i < 7; i++) {
+                        const date = new Date(startOfWeek);
+                        date.setDate(startOfWeek.getDate() + i);
+                        labels.push(`${date.getMonth() + 1}/${date.getDate()}`);
+                        
+                        const dayMatches = matches.filter(m => {
+                            const matchDate = new Date(m.entryTime);
+                            return matchDate.toDateString() === date.toDateString();
+                        });
+                        const dailyProfit = dayMatches.reduce((sum, m) => sum + m.profit, 0);
+                        weekData.push(dailyProfit >= 0 ? dailyProfit : 0);
+                    }
+                    
+                    charts.profitTrend.data.labels = labels;
+                    charts.profitTrend.data.datasets = [{
+                        label: '正收益',
+                        data: weekData,
+                        borderColor: '#52c41a',
+                        backgroundColor: 'rgba(82, 196, 26, 0.3)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        fill: true
+                    }];
+                    if (charts.profitTrend.options.scales) {
+                        charts.profitTrend.options.scales.y.beginAtZero = true;
+                    }
+                    charts.profitTrend.update();
+                    break;
+
+                case 'month':
+                    // 本月：只保留正收益
+                    const year = now.getFullYear();
+                    const month = now.getMonth();
+                    
+                    const weeks = getWeeksOfMonth(year, month);
+                    labels = ['第1周', '第2周', '第3周', '第4周'];
+                    
+                    const monthData = [];
+                    
+                    for (let i = 0; i < 4; i++) {
+                        const weekStart = weeks[i].start;
+                        const weekEnd = weeks[i].end;
+                        
+                        const weekMatches = matches.filter(m => {
+                            const matchDate = new Date(m.entryTime);
+                            return matchDate >= weekStart && matchDate <= weekEnd;
+                        });
+                        const weeklyProfit = weekMatches.reduce((sum, m) => sum + m.profit, 0);
+                        monthData.push(weeklyProfit >= 0 ? weeklyProfit : 0);
+                    }
+                    
+                    charts.profitTrend.data.labels = labels;
+                    charts.profitTrend.data.datasets = [{
+                        label: '正收益',
+                        data: monthData,
+                        borderColor: '#52c41a',
+                        backgroundColor: 'rgba(82, 196, 26, 0.3)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        fill: true
+                    }];
+                    if (charts.profitTrend.options.scales) {
+                        charts.profitTrend.options.scales.y.beginAtZero = true;
+                    }
+                    charts.profitTrend.update();
+                    break;
+            }
+        }
+
+        // 获取月份的四周（按日历周，从周一开始）
+        function getWeeksOfMonth(year, month) {
+            const weeks = [];
+            const firstDay = new Date(year, month, 1);
+            
+            let currentWeekStart = new Date(firstDay);
+            const dayOfWeek = firstDay.getDay();
+            const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            currentWeekStart.setDate(firstDay.getDate() - daysToMonday);
+            currentWeekStart.setHours(0, 0, 0, 0);
+            
+            for (let i = 0; i < 4; i++) {
+                const weekStart = new Date(currentWeekStart);
+                const weekEnd = new Date(currentWeekStart);
+                weekEnd.setDate(currentWeekStart.getDate() + 6);
+                weekEnd.setHours(23, 59, 59, 999);
+                
+                weeks.push({ start: weekStart, end: weekEnd });
+                currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+            }
+            
+            return weeks;
+        }
+
+        // 数字补零
+        function padZero(num) {
+            return num.toString().padStart(2, '0');
+        }
+
+        // 获取结果样式类
+        function getResultClass(result) {
+            if (result === 'success' || result === '撤离成功') {
+                return 'bg-success bg-opacity-20 text-success';
+            }
+            if (result === 'failed' || result === '撤离失败') {
+                return 'bg-danger bg-opacity-20 text-danger';
+            }
+            if (result === 'teamkill' || result === '友军击杀') {
+                return 'bg-purple-900 bg-opacity-30 text-purple-400';
+            }
+            if (result === 'disconnected' || result === '断线') {
+                return 'bg-blue-900 bg-opacity-30 text-blue-400';
+            }
+            return 'bg-gray-700 bg-opacity-30 text-gray-400';
+        }
+
+        // 获取结果文本
+        function getResultText(result) {
+            if (!result) return '未知';
+            if (result === 'success' || result === '撤离成功') return '撤离成功';
+            if (result === 'failed' || result === '撤离失败') return '撤离失败';
+            if (result === 'teamkill' || result === '友军击杀') return '友军击杀';
+            if (result === 'disconnected' || result === '断线') return '断线';
+            return '未知';
+        }
+
+        // 获取难度文本
+        function getDifficultyText(difficulty) {
+            if (!difficulty) return '未知';
+            if (difficulty === 'regular' || difficulty === '常规') return '常规';
+            if (difficulty === 'confidential' || difficulty === '机密') return '机密';
+            if (difficulty === 'topsecret' || difficulty === '绝密') return '绝密';
+            if (difficulty === 'eternalnight' || difficulty === '永夜') return '永夜';
+            return difficulty;
+        }
+    </script>
+</body>
+</html>
