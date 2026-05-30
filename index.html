@@ -478,10 +478,12 @@
         let recordToDelete = null;
         let editingMatchId = null;
 
+        const API_BASE = 'https://trackoptorstats-vqqvdlkrci.cn-shenzhen.fcapp.run';
+
         // 从后端数据库加载数据
         async function loadMatchesFromBackend() {
             try {
-                const response = await fetch('http://localhost:5000/api/get-matches');
+                const response = await fetch(`${API_BASE}/api/get-matches`);
                 const result = await response.json();
                 if (result.success && result.matches && result.matches.length > 0) {
                     matches = result.matches;
@@ -708,7 +710,7 @@
         // 保存记录到后端
         async function saveToBackend(match) {
             try {
-                const response = await fetch('http://localhost:5000/api/save-match', {
+                const response = await fetch(`${API_BASE}/api/save-match`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -952,7 +954,7 @@
         // 从后端删除记录
         async function deleteFromBackend(id) {
             try {
-                const response = await fetch(`http://localhost:5000/api/delete-match/${id}`, {
+                const response = await fetch(`${API_BASE}/api/delete-match/${id}`, {
                     method: 'DELETE'
                 });
                 const result = await response.json();
