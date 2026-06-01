@@ -499,7 +499,6 @@
             }
         });
 
-        
         // 从后端数据库加载数据
         async function loadMatchesFromBackend() {
             try {
@@ -527,7 +526,7 @@
             },
             '长弓溪谷': {
                 difficulties: [
-                    { value: 'regular', label: '常规', timeLimit: 35 },
+                    { value: 'regular', label: '常规', timeLimit: 30 },
                     { value: 'confidential', label: '机密', timeLimit: 25 },
                     { value: 'topsecret', label: '绝密', timeLimit: 30 }
                 ]
@@ -1764,6 +1763,7 @@
                 return `${date.getFullYear()}-${padZero(date.getMonth() + 1)}-${padZero(date.getDate())} ${padZero(date.getHours())}:${padZero(date.getMinutes())}`;
             } catch (e) {
                 return dateTimeString;
+            }
         }
 
         // 格式化日期
