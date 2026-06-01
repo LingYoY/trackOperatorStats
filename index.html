@@ -498,6 +498,7 @@
                 entryTimeInput.value = datetimeStr;
             }
         });
+
         
         // 从后端数据库加载数据
         async function loadMatchesFromBackend() {
@@ -1745,8 +1746,24 @@
 
         // 格式化日期时间
         function formatDateTime(dateTimeString) {
-            const date = new Date(dateTimeString);
-            return `${date.getFullYear()}-${padZero(date.getMonth() + 1)}-${padZero(date.getDate())} ${padZero(date.getHours())}:${padZero(date.getMinutes())}`;
+            // 直接解析 datetime-local 格式的字符串，不通过 Date 对象转换时区
+            if (!dateTimeString) return '';
+            
+            // 处理 "2026-06-01T11:42" 格式
+            if (dateTimeString.includes('T')) {
+                const [datePart, timePart] = dateTimeString.split('T');
+                const [year, month, day] = datePart.split('-');
+                const [hour, minute] = timePart.split(':');
+                return `${year}-${month}-${day} ${hour}:${minute}`;
+            }
+            
+            // 兼容其他格式
+            try {
+                const date = new Date(dateTimeString);
+                if (isNaN(date.getTime())) return dateTimeString;
+                return `${date.getFullYear()}-${padZero(date.getMonth() + 1)}-${padZero(date.getDate())} ${padZero(date.getHours())}:${padZero(date.getMinutes())}`;
+            } catch (e) {
+                return dateTimeString;
         }
 
         // 格式化日期
