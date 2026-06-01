@@ -480,6 +480,17 @@
 
         const API_BASE = 'https://trackoptorstats-vqqvdlkrci.cn-shenzhen.fcapp.run';
 
+        // 页面加载完成后自动填充当前时间
+        document.addEventListener('DOMContentLoaded', function() {
+            const entryTimeInput = document.getElementById('entry-time');
+            if (entryTimeInput && !entryTimeInput.value) {
+                const now = new Date();
+                // 格式化为 YYYY-MM-DDTHH:MM（datetime-local 输入框要求的格式）
+                const datetimeStr = now.toISOString().slice(0, 16);
+                entryTimeInput.value = datetimeStr;
+            }
+        });
+        
         // 从后端数据库加载数据
         async function loadMatchesFromBackend() {
             try {
