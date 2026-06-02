@@ -615,9 +615,17 @@
 
         // DOM 加载完成后执行
         document.addEventListener('DOMContentLoaded', async function() {
-            // 初始化当前时间
+            // 初始化当前时间（上海时区）
             const now = new Date();
-            const dateTimeString = now.toISOString().slice(0, 16);
+            const dateTimeString = now.toLocaleString('zh-CN', {
+                timeZone: 'Asia/Shanghai',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            }).replace(/\//g, '-').replace(',', '').replace(' ', 'T');
             document.getElementById('entry-time').value = dateTimeString;
 
             // 从后端数据库加载数据
@@ -797,7 +805,15 @@
             // 重置表单
             e.target.reset();
             const now = new Date();
-            const dateTimeString = now.toISOString().slice(0, 16);
+            const dateTimeString = now.toLocaleString('zh-CN', {
+                timeZone: 'Asia/Shanghai',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            }).replace(/\//g, '-').replace(',', '').replace(' ', 'T');
             document.getElementById('entry-time').value = dateTimeString;
             document.getElementById('difficulty').innerHTML = '<option value="">请选择难度</option>';
 
